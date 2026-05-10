@@ -1,4 +1,4 @@
-# AI女友
+# 我把她叫做千语
 
 一个具有记忆功能的AI女友聊天程序，从陌生人慢慢变熟悉。
 
@@ -58,11 +58,12 @@ chatMe/
 ## 使用方法
 
 1. 安装依赖：
+
 ```bash
 pip install -r requirements.txt
 ```
 
-2. 配置 API Key：
+1. 配置 API Key：
 
    **方式一：使用 .env 文件（推荐）**
    - 复制 `.env.example` 为 `.env`
@@ -71,15 +72,14 @@ pip install -r requirements.txt
    cp .env.example .env
    # 编辑 .env 文件，填入你的 API Key
    ```
-
    **方式二：设置环境变量**
    ```bash
    export DEEPSEEK_API_KEY="your-deepseek-api-key"
    # 可选：设置自定义 API 地址
    export DEEPSEEK_BASE_URL="https://your-api-endpoint.com"
    ```
+2. 运行程序：
 
-3. 运行程序：
 ```bash
 python main.py
 ```

@@ -1,0 +1,13 @@
+{
+    "data_dir": "data",
+    "subdirectories": {
+        "chat_history": "chat_history",
+        "personality": "personality",
+        "summarized_memory": "summarized_memory"
+    },
+    "filenames": {
+        "chat_history": "chat_history.json",
+        "personality": "personality.json",
+        "summarized_memory": "summarized_memory.json"
+    }
+}

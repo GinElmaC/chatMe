@@ -8,6 +8,10 @@ from typing import List, Dict, Any
 class MemoryManager:
     """记忆管理类，处理聊天记录、人格设定和浓缩记忆的存储"""
     
+    # 关系等级配置
+    LEVEL_THRESHOLDS = [30, 100, 300, 600, 1000]
+    LEVEL_NAMES = ["陌生", "熟悉", "有好感", "亲密", "交往"]
+    
     def __init__(self, config_path: str = "config.json"):
         """初始化记忆管理器，从配置文件读取路径设置"""
         self.config = self._load_config(config_path)
@@ -73,7 +77,7 @@ class MemoryManager:
             json.dump(history, f, ensure_ascii=False, indent=2)
     
     def add_chat_message(self, role: str, content: str, timestamp: str = None):
-        """添加一条聊天消息到历史记录"""
+        """添加一条聊天消息到历史记录，并更新经验值"""
         if timestamp is None:
             timestamp = datetime.now().isoformat()
         history = self.load_chat_history()
@@ -83,13 +87,75 @@ class MemoryManager:
             "timestamp": timestamp
         })
         self.save_chat_history(history)
+        
+        # 如果是用户消息，增加经验值
+        if role == "user":
+            self._add_experience(1)
+    
+    def _add_experience(self, amount: int):
+        """添加经验值，并检查是否升级"""
+        personality = self.load_personality()
+        current_exp = personality.get("experience", 0)
+        current_level = personality.get("relationship_level", 0)
+        
+        new_exp = max(0, current_exp + amount)
+        personality["experience"] = new_exp
+        
+        # 检查升级
+        new_level = self._calculate_level(new_exp)
+        if new_level > current_level:
+            personality["relationship_level"] = new_level
+            print(f"🎉 关系升级了！现在是【{self.LEVEL_NAMES[new_level]}】（Lv.{new_level+1}）")
+        elif new_level < current_level:
+            personality["relationship_level"] = new_level
+            print(f"😔 关系降级了...现在是【{self.LEVEL_NAMES[new_level]}】（Lv.{new_level+1}）")
+        
+        personality["total_messages"] = personality.get("total_messages", 0) + 1
+        self.save_personality(personality)
+    
+    def _calculate_level(self, experience: int) -> int:
+        """根据经验值计算关系等级"""
+        for i, threshold in enumerate(self.LEVEL_THRESHOLDS):
+            if experience < threshold:
+                return i
+        return len(self.LEVEL_THRESHOLDS)
+    
+    def get_relationship_level(self) -> int:
+        """获取当前关系等级"""
+        personality = self.load_personality()
+        return personality.get("relationship_level", 0)
+    
+    def get_experience(self) -> int:
+        """获取当前经验值"""
+        personality = self.load_personality()
+        return personality.get("experience", 0)
+    
+    def add_content_bonus(self, score: int):
+        """根据内容评分添加经验值（-5到+5）"""
+        # 限制在 -5 到 +5 之间
+        clamped_score = max(-5, min(5, score))
+        if clamped_score != score:
+            print(f"内容评分超出范围，已限制为 {clamped_score}")
+        self._add_experience(clamped_score)
+    
+    def add_follow_up_penalty(self):
+        """添加追问惩罚（第二次追问不回）"""
+        self._add_experience(-2)
     
     def load_personality(self) -> Dict[str, Any]:
         """加载人格设定，返回人设字典"""
         if os.path.exists(self.personality_path):
             try:
                 with open(self.personality_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    personality = json.load(f)
+                    # 确保必需字段存在
+                    if "relationship_level" not in personality:
+                        personality["relationship_level"] = 0
+                    if "experience" not in personality:
+                        personality["experience"] = 0
+                    if "total_messages" not in personality:
+                        personality["total_messages"] = 0
+                    return personality
             except Exception:
                 return self._get_default_personality()
         return self._get_default_personality()
@@ -114,7 +180,10 @@ class MemoryManager:
                 "会主动关心你"
             ],
             "user_description": "一个正在和我刚认识的网友，希望能慢慢了解彼此",
-            "greeting": "你好... 我是小希，很高兴认识你。"
+            "greeting": "你好... 我是小希，很高兴认识你。",
+            "relationship_level": 0,
+            "experience": 0,
+            "total_messages": 0
         }
     
     def load_summarized_memory(self) -> List[Dict[str, Any]]:

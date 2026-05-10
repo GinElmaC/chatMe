@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import os
 import sys
+import threading
+import time
+from datetime import datetime
 from dotenv import load_dotenv
 from src.memory_manager import MemoryManager
 from src.llm_client import LLMClient
@@ -14,12 +17,19 @@ load_dotenv()
 def main():
     """主程序入口，初始化组件并处理聊天流程"""
     print("=" * 50)
-    print("聊天助手启动中...")
+    print("AI女友 - 聊天助手启动中...")
     print("=" * 50)
     
     # 初始化记忆管理器
     memory_manager = MemoryManager()
     personality = memory_manager.load_personality()
+    
+    # 获取当前关系状态
+    level = memory_manager.get_relationship_level()
+    exp = memory_manager.get_experience()
+    level_names = memory_manager.LEVEL_NAMES
+    
+    print(f"\n当前关系状态:【{level_names[level]}】- {exp}EXP")
     
     # 初始化LLM客户端
     llm_client = LLMClient()
@@ -32,53 +42,122 @@ def main():
     chat_history = memory_manager.load_chat_history()
     if not chat_history:
         greeting = personality.get("greeting", "你好！")
-        print(f"\n{personality.get('name', '小助手')}: {greeting}")
+        scheduler.start_typing(greeting)
+        # 等待打字时间
+        typing_time = llm_client.calculate_typing_delay(greeting)
+        time.sleep(typing_time)
+        # 一次性显示回复
+        print(f"\n{personality.get('name', '千语')}: {greeting}")
+        scheduler.end_typing()
         memory_manager.add_chat_message("assistant", greeting)
     else:
         print(f"\n欢迎回来！已有 {len(chat_history)} 条聊天记录")
     
+    # 创建一个标志位来控制退出
+    should_exit = False
+    
+    def check_proactive_message():
+        """检查是否有主动消息需要显示"""
+        nonlocal should_exit
+        while not should_exit:
+            try:
+                pending_msg = scheduler.get_pending_message()
+                if pending_msg:
+                    # 先开始打字延迟
+                    scheduler.start_typing(pending_msg)
+                    # 等待打字时间
+                    time.sleep(scheduler.llm_client.calculate_typing_delay(pending_msg))
+                    # 然后一次性显示消息
+                    print()
+                    print(f"{personality.get('name', '千语')}: {pending_msg}")
+                    scheduler.end_typing()
+                    memory_manager.add_chat_message("assistant", pending_msg)
+                    scheduler.update_last_message_time()
+                    print("\n你: ", end="", flush=True)
+                time.sleep(1)
+            except Exception as e:
+                print(f"\n检查主动消息失败: {e}")
+                time.sleep(1)
+    
+    # 启动主动消息检查线程
+    proactive_thread = threading.Thread(target=check_proactive_message, daemon=True)
+    proactive_thread.start()
+    
     try:
         # 主聊天循环
-        while True:
-            user_input = input("\n你: ").strip()
-            
-            # 处理退出命令
-            if user_input.lower() in ['退出', 'exit', 'quit', 'q']:
-                print("再见！")
+        while not should_exit:
+            try:
+                user_input = input("\n你: ").strip()
+                
+                if user_input.lower() in ['退出', 'exit', 'quit', 'q']:
+                    print("再见！")
+                    should_exit = True
+                    break
+                
+                if user_input.lower() in ['总结', 'summary']:
+                    print("正在生成聊天摘要...")
+                    scheduler.trigger_summary_now()
+                    continue
+                
+                if not user_input:
+                    continue
+                
+                # 更新最后消息时间
+                scheduler.update_last_message_time()
+                
+                # 保存用户消息（这会自动增加1点经验值）
+                memory_manager.add_chat_message("user", user_input)
+                
+                # 分析用户消息的语气，给予额外经验值
+                sentiment_score = llm_client.analyze_content_sentiment(user_input)
+                if sentiment_score != 0:
+                    memory_manager.add_content_bonus(sentiment_score)
+                    if sentiment_score > 0:
+                        print(f"💕 好感度 +{sentiment_score}")
+                    else:
+                        print(f"💔 好感度 {sentiment_score}")
+                
+                # 获取上下文消息
+                context_messages = memory_manager.get_context_messages()
+                
+                # 先获取完整回复
+                full_response = llm_client.chat_with_typing_delay(context_messages, personality)
+                
+                # 计算打字延迟
+                scheduler.start_typing(full_response)
+                
+                # 等待打字时间
+                typing_time = llm_client.calculate_typing_delay(full_response)
+                time.sleep(typing_time)
+                
+                # 一次性显示回复
+                print(f"\n{personality.get('name', '千语')}: {full_response}")
+                
+                # 结束打字，重置追问计时
+                scheduler.end_typing()
+                
+                # 保存助手回复
+                memory_manager.add_chat_message("assistant", full_response)
+                
+                # 更新最后消息时间
+                scheduler.update_last_message_time()
+                
+                # 显示当前关系状态
+                level = memory_manager.get_relationship_level()
+                exp = memory_manager.get_experience()
+                print(f"\n💗 当前状态: 【{level_names[level]}】- {exp}EXP")
+                
+            except KeyboardInterrupt:
+                print("\n\n收到中断信号，正在退出...")
+                should_exit = True
                 break
-            
-            # 处理总结命令
-            if user_input.lower() in ['总结', 'summary']:
-                print("正在生成聊天摘要...")
-                scheduler.trigger_summary_now()
+            except Exception as e:
+                print(f"\n发生错误: {e}")
                 continue
-            
-            # 忽略空输入
-            if not user_input:
-                continue
-            
-            # 保存用户消息
-            memory_manager.add_chat_message("user", user_input)
-            
-            # 获取上下文消息
-            context_messages = memory_manager.get_context_messages()
-            
-            # 流式输出助手回复
-            print(f"\n{personality.get('name', '小助手')}: ", end="", flush=True)
-            
-            full_response = ""
-            for chunk in llm_client.chat_stream(context_messages, personality):
-                print(chunk, end="", flush=True)
-                full_response += chunk
-            print()
-            
-            # 保存助手回复
-            memory_manager.add_chat_message("assistant", full_response)
-            
-    except KeyboardInterrupt:
-        print("\n\n收到中断信号，正在退出...")
+                
     finally:
         # 清理资源
+        should_exit = True
         scheduler.stop()
         print("聊天助手已关闭")
 
