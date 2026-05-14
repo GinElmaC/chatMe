@@ -126,11 +126,11 @@ class Scheduler:
                 thread.join(timeout=1.0)
     
     def _reload_config_task(self):
-        """每60秒重新加载人格设定和浓缩记忆"""
+        """每60秒重新加载人格设定"""
         while self.running:
             try:
                 self.memory_manager.load_personality()
-                self.memory_manager.load_summarized_memory()
+                self.memory_manager.load_zip_history()
             except Exception as e:
                 print(f"重新加载配置失败: {e}")
             
@@ -140,20 +140,12 @@ class Scheduler:
                 time.sleep(1)
     
     def _daily_summary_task(self):
-        """每5分钟检查日期变化，发现新的一天则生成前一天摘要"""
+        """每日摘要任务（在新系统中已废弃，保留空循环）"""
         while self.running:
             try:
-                now = datetime.now()
-                current_date = now.strftime("%Y-%m-%d")
-                
-                if self.last_summary_date is None:
-                    self.last_summary_date = current_date
-                elif self.last_summary_date != current_date:
-                    yesterday = (now - timedelta(days=1)).strftime("%Y-%m-%d")
-                    self._generate_daily_summary(yesterday)
-                    self.last_summary_date = current_date
+                pass
             except Exception as e:
-                print(f"每日摘要任务失败: {e}")
+                print(f"任务循环失败: {e}")
             
             for _ in range(300):
                 if not self.running:
@@ -278,8 +270,8 @@ class Scheduler:
     def _generate_proactive_message(self):
         """生成主动发起的对话内容，结合自身情况和聊天记录"""
         personality = self.memory_manager.load_personality()
-        chat_history = self.memory_manager.load_chat_history()
-        summarized_memory = self.memory_manager.load_summarized_memory()
+        chat_history = self.memory_manager.load_today_chat_history()
+        zip_history = self.memory_manager.load_zip_history()
         name = personality.get('name', '千语')
         level = self.memory_manager.get_relationship_level()
         level_name = self.memory_manager.LEVEL_NAMES[level]
@@ -396,25 +388,6 @@ class Scheduler:
         self.waiting_for_reply = False
         self.follow_up_attempts = 0
     
-    def _generate_daily_summary(self, date: str):
-        """生成指定日期的聊天摘要，保存并清空历史"""
-        print(f"正在生成 {date} 的聊天摘要...")
-        
-        chat_history = self.memory_manager.load_chat_history()
-        if not chat_history:
-            print("没有聊天记录需要总结")
-            return
-        
-        summary = self.llm_client.summarize_chat(chat_history)
-        chat_count = len(chat_history)
-        
-        self.memory_manager.add_summarized_memory(date, summary, chat_count)
-        self.memory_manager.clear_chat_history()
-        
-        print(f"已生成 {date} 的聊天摘要，共 {chat_count} 条消息")
-        print(f"摘要内容: {summary}")
-    
     def trigger_summary_now(self):
-        """立即触发当天的聊天摘要生成"""
-        today = datetime.now().strftime("%Y-%m-%d")
-        self._generate_daily_summary(today)
+        """立即触发浓缩（在新系统中已废弃，保留方法兼容）"""
+        print("请使用聊天命令 '浓缩' 或 'summary' 来触发浓缩")

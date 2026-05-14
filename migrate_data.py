@@ -1,56 +1,83 @@
 #!/usr/bin/env python3
-"""数据迁移脚本：将旧的数据文件移动到新的子文件夹结构中"""
-
 import os
 import shutil
 import json
+from datetime import datetime
+from src.memory_manager import MemoryManager
 
 
-def migrate_data():
-    """迁移数据到新的文件夹结构"""
-    config_path = "config.json"
+def migrate_old_data():
+    """从旧格式数据迁移到新系统"""
+    print("=" * 50)
+    print("正在检查旧格式数据...")
+    print("=" * 50)
     
-    # 加载配置
-    config = {}
-    if os.path.exists(config_path):
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
+    old_data_dir = "data"
+    old_chat_file = os.path.join(old_data_dir, "chat_history", "chat_history.json")
+    old_summaries_file = os.path.join(old_data_dir, "summarized_memory", "summarized_memory.json")
     
-    base_dir = config.get("data_dir", "data")
-    subdirs = config.get("subdirectories", {})
-    filenames = config.get("filenames", {})
-    
-    # 确保新的目录结构
-    for subdir_name in subdirs.values():
-        dir_path = os.path.join(base_dir, subdir_name)
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
-            print(f"✅ 创建目录: {dir_path}")
-    
-    # 迁移文件
-    files_to_migrate = [
-        ("chat_history.json", "chat_history"),
-        ("personality.json", "personality"),
-        ("summarized_memory.json", "summarized_memory")
-    ]
-    
-    for old_filename, subdir_key in files_to_migrate:
-        old_path = os.path.join(base_dir, old_filename)
-        if os.path.exists(old_path):
-            subdir = subdirs.get(subdir_key, subdir_key)
-            new_filename = filenames.get(subdir_key, old_filename)
-            new_path = os.path.join(base_dir, subdir, new_filename)
+    if os.path.exists(old_chat_file):
+        print(f"\n找到旧聊天记录文件: {old_chat_file}")
+        
+        try:
+            with open(old_chat_file, 'r', encoding='utf-8') as f:
+                old_chat = json.load(f)
             
-            if not os.path.exists(new_path):
-                shutil.move(old_path, new_path)
-                print(f"✅ 迁移文件: {old_filename} -> {os.path.join(subdir, new_filename)}")
-            else:
-                print(f"⚠️  跳过: {old_filename} 已在目标位置")
-        else:
-            print(f"ℹ️  文件不存在: {old_filename}")
+            if old_chat:
+                today = datetime.now().strftime("%Y-%m-%d")
+                new_chat_file = os.path.join(old_data_dir, "chat_history", f"chat_history_{today}.json")
+                
+                if not os.path.exists(new_chat_file):
+                    print(f"迁移到: {new_chat_file}")
+                    os.makedirs(os.path.dirname(new_chat_file), exist_ok=True)
+                    with open(new_chat_file, 'w', encoding='utf-8') as f:
+                        json.dump(old_chat, f, ensure_ascii=False, indent=2)
+                    print("✓ 聊天记录已迁移")
+                else:
+                    print("✓ 今日聊天记录文件已存在")
+                
+                backup_file = old_chat_file + ".backup"
+                if not os.path.exists(backup_file):
+                    shutil.copy2(old_chat_file, backup_file)
+                    print(f"✓ 已备份旧文件到: {backup_file}")
+        except Exception as e:
+            print(f"迁移聊天记录出错: {e}")
     
-    print("\n✅ 数据迁移完成！")
+    if os.path.exists(old_summaries_file):
+        print(f"\n找到旧摘要文件: {old_summaries_file}")
+        
+        try:
+            with open(old_summaries_file, 'r', encoding='utf-8') as f:
+                old_summaries = json.load(f)
+            
+            zip_file = os.path.join(old_data_dir, "chat_history_zip.json")
+            
+            if not os.path.exists(zip_file) and old_summaries:
+                print("迁移到新格式...")
+                
+                new_zip_data = {
+                    "summaries": [],
+                    "core_events": []
+                }
+                
+                for summary_item in old_summaries[-20:]:
+                    new_zip_data["summaries"].append({
+                        "date": summary_item.get("date", ""),
+                        "summary": summary_item.get("summary", ""),
+                        "timestamp": datetime.now().isoformat()
+                    })
+                
+                with open(zip_file, 'w', encoding='utf-8') as f:
+                    json.dump(new_zip_data, f, ensure_ascii=False, indent=2)
+                
+                print("✓ 摘要已迁移")
+        except Exception as e:
+            print(f"迁移摘要出错: {e}")
+    
+    print("\n" + "=" * 50)
+    print("迁移完成！")
+    print("=" * 50)
 
 
 if __name__ == "__main__":
-    migrate_data()
+    migrate_old_data()
