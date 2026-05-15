@@ -48,9 +48,14 @@ def main():
     scheduler = Scheduler(memory_manager, llm_client)
     scheduler.start()
     
-    # 检查是否是第一次聊天，如果是则发送问候语
+    # 检查是否是第一次聊天（检查浓缩历史是否为空）
+    zip_history = memory_manager.load_zip_history()
+    is_first_chat = (len(zip_history.get("summaries", [])) == 0)
+    
+    # 获取今日历史（用于欢迎回来提示）
     today_history = memory_manager.load_today_chat_history()
-    if not today_history:
+    
+    if is_first_chat:
         greeting = personality.get("greeting", "你好！")
         scheduler.start_typing(greeting)
         typing_time = llm_client.calculate_typing_delay(greeting)
@@ -59,7 +64,7 @@ def main():
         scheduler.end_typing()
         memory_manager.add_chat_message("assistant", greeting)
     else:
-        print(f"\n欢迎回来！今日已有 {len(today_history)} 条聊天记录")
+        print(f"\n欢迎回来！")
     
     # 创建一个标志位来控制退出
     should_exit = False

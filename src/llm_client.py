@@ -200,3 +200,44 @@ class LLMClient:
         except Exception as e:
             print(f"内容分析失败: {e}")
             return 0
+    
+    def split_into_sentences(self, text: str) -> list:
+        """将文本按照句子合理拆分
+        
+        Args:
+            text: 要拆分的文本
+            
+        Returns:
+            拆分后的句子列表
+        """
+        import re
+        
+        # 常见的句子结束标点
+        sentence_endings = r'(?<=[。！？!?…])\s+'
+        
+        # 先按照句子结束标点分割
+        sentences = re.split(sentence_endings, text)
+        
+        # 处理特殊情况
+        result = []
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if sentence:
+                # 如果句子太长（超过50字），进一步拆分
+                if len(sentence) > 50:
+                    # 尝试按照逗号、分号等进一步拆分
+                    sub_sentences = re.split(r'(?<=[，；;,])\s*', sentence)
+                    current = ""
+                    for sub in sub_sentences:
+                        if len(current + sub) <= 40:
+                            current += sub
+                        else:
+                            if current:
+                                result.append(current)
+                            current = sub
+                    if current:
+                        result.append(current)
+                else:
+                    result.append(sentence)
+        
+        return result
