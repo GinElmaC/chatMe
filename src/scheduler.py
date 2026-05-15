@@ -87,7 +87,7 @@ class Scheduler:
         delay = self.llm_client.calculate_typing_delay(text)
         self.is_typing = True
         self.typing_end_time = datetime.now() + timedelta(seconds=delay)
-        print(f"⌨️ 正在输入... (约{int(delay)}秒)")
+        print(f"⌨️ 正在输入...")
         return delay
     
     def end_typing(self):
