@@ -3,3 +3,7 @@ python-dotenv>=1.0.0
 
 # 可选：用于内存监控（不需要监控可以不安装）
 psutil>=5.0.0
+
+# QQ机器人接入库
+requests>=2.0.0
+websockets>=10.0

@@ -1,0 +1,45 @@
+
+# go-cqhttp 配置文件示例
+# 请根据实际情况修改后重命名为 config.yml
+
+account: # 账号相关
+  uin: 123456 # QQ账号
+  password: '' # 密码为空时使用扫码登录
+  encrypt: false # 是否开启密码加密
+  status: 0 # 在线状态，请参考 https://git.io/JJZwz 填写
+  relogin: # 重连设置
+    delay: 3 # 首次重连延迟, 单位秒
+    interval: 3 # 重连间隔
+    max-times: 0 # 最大重连次数, 0 表示无限
+
+message: # 消息相关
+  # 上报数据格式
+  post-format: array
+  # 上报消息格式
+  report-self-message: false
+  # 为回复消息添加消息头
+  reply-self-message: false
+  # 移除回复消息中@的部分
+  remove-reply-at: false
+  # 添加额外的回复信息
+  extra-reply-data: false
+  # 日志中记录完整的原始消息
+  log-uraw: true
+
+servers: # 连接服务列表
+  # HTTP通信
+  - http:
+      host: 127.0.0.1
+      port: 8080
+      timeout: 5 # 超时时间, 单位秒
+      middlewares:
+        <<: *default # 引用默认中间件
+  # 正向 WebSocket
+  - ws:
+      host: 127.0.0.1
+      port: 8080
+
+# 中间件
+default: # 默认中间件
+  access-token: "" # 访问密钥
+  filter: "" # 过滤器文件
