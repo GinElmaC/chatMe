@@ -13,6 +13,7 @@ from src.memory_manager import MemoryManager
 from src.llm_client import LLMClient
 from src.scheduler import Scheduler
 from src.summary_agent import SummaryAgent
+from src.notifications import NotificationManager
 from skills import SKILLS
 
 # 加载 .env 文件中的环境变量
@@ -90,6 +91,13 @@ def main():
         """线程安全的打印助手消息"""
         with output_lock:
             print(f"\n{name}: {message}")
+        
+        # 发送系统通知
+        NotificationManager.send_notification(
+            title=name,
+            message=message,
+            subtitle="千语发来新消息"
+        )
     
     def check_proactive_message():
         """检查是否有主动消息需要显示"""
