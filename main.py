@@ -15,6 +15,9 @@ from src.scheduler import Scheduler
 from src.summary_agent import SummaryAgent
 from skills import SKILLS
 
+# 加载 .env 文件中的环境变量
+load_dotenv()
+
 
 def main():
     """主程序入口，初始化组件并处理聊天流程"""
