@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 import os
 import sys
@@ -6,15 +7,13 @@ import time
 import atexit
 from datetime import datetime
 from dotenv import load_dotenv
+from prompt_toolkit import PromptSession
+from prompt_toolkit.patch_stdout import patch_stdout
 from src.memory_manager import MemoryManager
 from src.llm_client import LLMClient
 from src.scheduler import Scheduler
 from src.summary_agent import SummaryAgent
 from skills import SKILLS
-
-
-# 加载 .env 文件中的环境变量
-load_dotenv()
 
 
 def main():
@@ -79,6 +78,16 @@ def main():
     # 创建一个标志位来控制退出
     should_exit = False
     
+    # 创建一个锁来保护输出
+    output_lock = threading.Lock()
+    # 用于存储待显示的主动消息队列
+    pending_messages = []
+    
+    def print_assistant_message(name: str, message: str):
+        """线程安全的打印助手消息"""
+        with output_lock:
+            print(f"\n{name}: {message}")
+    
     def check_proactive_message():
         """检查是否有主动消息需要显示"""
         nonlocal should_exit
@@ -88,12 +97,10 @@ def main():
                 if pending_msg:
                     scheduler.start_typing(pending_msg)
                     time.sleep(scheduler.llm_client.calculate_typing_delay(pending_msg))
-                    print()
-                    print(f"{personality.get('name', '千语')}: {pending_msg}")
+                    print_assistant_message(personality.get('name', '千语'), pending_msg)
                     scheduler.end_typing()
                     memory_manager.add_chat_message("assistant", pending_msg)
                     scheduler.update_last_message_time()
-                    print("\n你: ", end="", flush=True)
                 time.sleep(1)
             except Exception as e:
                 print(f"\n检查主动消息出错: {e}")
@@ -121,11 +128,16 @@ def main():
     
     atexit.register(run_on_exit)
     
+    # 使用 prompt_toolkit 来处理输入
+    session = PromptSession()
+    
     try:
         # 主聊天循环
         while not should_exit:
             try:
-                user_input = input("\n你: ").strip()
+                # 使用 patch_stdout 来安全地处理异步输出
+                with patch_stdout():
+                    user_input = session.prompt("\n你: ").strip()
                 
                 if user_input.lower() in ['退出', 'exit', 'quit', 'q']:
                     print("再见！")
@@ -173,7 +185,7 @@ def main():
                             scheduler.start_typing(skill_response)
                             typing_time = llm_client.calculate_typing_delay(skill_response)
                             time.sleep(typing_time)
-                            print(f"\n{personality.get('name', '千语')}: {skill_response}")
+                            print_assistant_message(personality.get('name', '千语'), skill_response)
                             scheduler.end_typing()
                             memory_manager.add_chat_message("assistant", skill_response)
                             scheduler.update_last_message_time()
@@ -205,8 +217,8 @@ def main():
                 typing_time = llm_client.calculate_typing_delay(full_response)
                 time.sleep(typing_time)
                 
-                # 一次性显示回复
-                print(f"\n{personality.get('name', '千语')}: {full_response}")
+                # 显示回复
+                print_assistant_message(personality.get('name', '千语'), full_response)
                 
                 # 结束打字，重置追问计时
                 scheduler.end_typing()
