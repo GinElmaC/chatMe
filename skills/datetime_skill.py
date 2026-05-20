@@ -9,7 +9,7 @@ class DateTimeSkill(BaseSkill):
     
     name = "datetime"
     description = "查询当前日期、时间、星期几等"
-    version = "1.0.0"
+    version = "2.0.0"
     unlock_level = 0  # 所有人都可以使用
     
     # 中文星期几映射
@@ -24,17 +24,50 @@ class DateTimeSkill(BaseSkill):
     }
     
     def can_handle(self, message: str) -> bool:
-        """判断是否能处理该消息"""
+        """判断是否能处理该消息（更严格的关键词匹配）"""
+        # 更严格的关键词组合
         keywords = [
-            "今天", "几号", "日期", "星期", "几点", "时间",
-            "现在", "此刻", "当前时间", "什么日子",
-            "today", "date", "time", "now", "what day",
-            "几点了", "几号了"
+            # 完整的询问短语
+            "今天是几号", "今天星期几", "现在几点", "几点了", "几号了",
+            "今天几号", "今天是星期几", "现在是几点", "现在是几号",
+            "今天的日期", "现在的时间", "今天是周几",
+            
+            # 简短但需要配合问号或语气词
+            "现在是", "今天是", "什么时间", "什么日期", "什么日子",
         ]
-        return any(keyword in message for keyword in keywords)
+        
+        # 英文关键词
+        english_keywords = [
+            "what time", "what date", "what day", "what is today",
+            "current time", "current date", "today is",
+        ]
+        
+        # 检查关键词组合（更严格）
+        message_lower = message.lower()
+        
+        # 检查是否有明显的询问意图
+        has_question_mark = "?" in message or "？" in message
+        has_ask_word = any(word in message for word in ["问", "查", "问一下", "告诉我"])
+        
+        # 检查中文关键词
+        for keyword in keywords:
+            if keyword in message:
+                # 如果是完整的短语，直接匹配
+                if keyword in ["今天是几号", "今天星期几", "现在几点", "几点了"]:
+                    return True
+                # 否则需要有问号或询问词
+                if has_question_mark or has_ask_word:
+                    return True
+        
+        # 检查英文关键词
+        for keyword in english_keywords:
+            if keyword in message_lower:
+                return True
+        
+        return False
     
-    def handle(self, message: str, context: Dict[str, Any]) -> Optional[str]:
-        """处理用户消息"""
+    def execute(self, message: str, context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """执行技能，返回结构化时间数据"""
         now = datetime.now()
         
         # 获取各种日期/时间信息
@@ -43,67 +76,35 @@ class DateTimeSkill(BaseSkill):
         day = now.day
         hour = now.hour
         minute = now.minute
-        second = now.second
         weekday = now.weekday()
         weekday_str = self.WEEKDAY_MAP[weekday]
         
-        # 获取性格设定
-        personality = self.memory.load_personality()
-        name = personality.get('name', '千语')
-        
-        # 根据消息内容生成不同的回复
-        if any(key in message for key in ["几点", "时间", "time", "now"]):
-            # 询问时间
-            reply = self._get_time_reply(now, name, hour, minute, weekday_str)
-        elif any(key in message for key in ["星期", "周几", "what day"]):
-            # 询问星期
-            reply = f"今天是{weekday_str}呀~"
-        elif any(key in message for key in ["今天", "几号", "日期", "date"]):
-            # 询问日期
-            reply = f"今天是{year}年{month}月{day}日，{weekday_str}~"
-        else:
-            # 通用回复
-            reply = self._get_general_reply(now, name, year, month, day, hour, minute, weekday_str)
-        
-        return reply
-    
-    def _get_time_reply(self, now, name, hour, minute, weekday_str):
-        """获取时间相关的回复"""
-        # 根据时间段选择语气
+        # 获取时间段问候
         if 5 <= hour < 9:
-            greet = "早上好呀"
+            time_period = "早上"
         elif 9 <= hour < 12:
-            greet = "上午好"
+            time_period = "上午"
         elif 12 <= hour < 14:
-            greet = "中午好"
+            time_period = "中午"
         elif 14 <= hour < 18:
-            greet = "下午好"
+            time_period = "下午"
         elif 18 <= hour < 22:
-            greet = "晚上好"
+            time_period = "晚上"
         else:
-            greet = "现在是"
+            time_period = "深夜"
         
-        time_str = f"{hour}点{minute}分"
-        
-        replies = [
-            f"{greet}~现在是{time_str}，{weekday_str}~",
-            f"{name}看看...哦，现在是{time_str}啦！",
-            f"现在是{time_str}哦~有什么想做的吗？",
-            f"现在已经是{time_str}啦，时间过得好快呀~"
-        ]
-        
-        # 简单随机选择一个回复
-        import random
-        return random.choice(replies)
-    
-    def _get_general_reply(self, now, name, year, month, day, hour, minute, weekday_str):
-        """获取通用回复"""
-        time_str = f"{hour}点{minute}分"
-        replies = [
-            f"今天是{year}年{month}月{day}日，{weekday_str}，现在是{time_str}~",
-            f"{name}告诉你哦，现在是{year}年{month}月{day}日{weekday_str}，{time_str}啦~",
-            f"让{name}看看...今天是{month}月{day}日{weekday_str}，现在是{time_str}~"
-        ]
-        
-        import random
-        return random.choice(replies)
+        # 返回结构化数据
+        return {
+            "type": "datetime",
+            "year": year,
+            "month": month,
+            "day": day,
+            "hour": hour,
+            "minute": minute,
+            "weekday": weekday_str,
+            "time_period": time_period,
+            "formatted_date": f"{year}年{month}月{day}日",
+            "formatted_time": f"{hour}点{minute}分",
+            "full_datetime": f"{year}年{month}月{day}日 {weekday_str} {hour}点{minute}分"
+        }
+

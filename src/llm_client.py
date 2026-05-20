@@ -89,10 +89,12 @@ class LLMClient:
         
         return prompt
     
-    def chat_with_typing_delay(self, messages: List[Dict[str, str]], personality: Dict[str, Any], stream: bool = True) -> str:
+    def chat_with_typing_delay(self, messages: List[Dict[str, str]], personality: Dict[str, Any], extra_prompt: str = "", stream: bool = True) -> str:
         """生成回复，stream=True时添加系统提示词用于正常聊天"""
         if stream:
             system_prompt = self.build_system_prompt(personality)
+            if extra_prompt:
+                system_prompt += extra_prompt
             full_messages = [{"role": "system", "content": system_prompt}] + messages
             temperature = 0.8
         else:

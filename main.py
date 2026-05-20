@@ -183,29 +183,13 @@ def main():
                 scheduler.update_last_message_time()
                 
                 # 先检查是否有技能可以处理
-                skill_handled = False
+                skill_data = None
                 for skill in active_skills:
                     if skill.can_handle(user_input):
-                        # 技能可以处理
-                        skill_response = skill.handle(user_input, {})
-                        if skill_response:
-                            # 保存用户消息
-                            memory_manager.add_chat_message("user", user_input)
-                            
-                            # 使用技能回复
-                            scheduler.start_typing(skill_response)
-                            typing_time = llm_client.calculate_typing_delay(skill_response)
-                            time.sleep(typing_time)
-                            print_assistant_message(personality.get('name', '千语'), skill_response)
-                            scheduler.end_typing()
-                            memory_manager.add_chat_message("assistant", skill_response)
-                            scheduler.update_last_message_time()
-                            skill_handled = True
+                        # 技能可以处理，获取结构化数据
+                        skill_data = skill.execute(user_input, {})
+                        if skill_data:
                             break
-                
-                if skill_handled:
-                    # 技能已处理，继续下一轮
-                    continue
                 
                 # 保存用户消息（这会自动增加1点经验值）
                 memory_manager.add_chat_message("user", user_input)
@@ -218,8 +202,17 @@ def main():
                 # 获取上下文消息
                 context_messages = memory_manager.get_context_messages()
                 
-                # 先获取完整回复
-                full_response = llm_client.chat_with_typing_delay(context_messages, personality)
+                # 如果有技能数据，让 LLM 使用它来生成回复
+                if skill_data:
+                    # 构建带技能数据的系统提示
+                    skill_info = f"\n你已获取到以下信息：{json.dumps(skill_data, ensure_ascii=False)}"
+                    skill_instruction = "\n请根据获取到的信息，自然地回答用户的问题。"
+                else:
+                    skill_info = ""
+                    skill_instruction = ""
+                
+                # 获取完整回复
+                full_response = llm_client.chat_with_typing_delay(context_messages, personality, skill_info + skill_instruction)
                 
                 # 计算打字延迟
                 scheduler.start_typing(full_response)

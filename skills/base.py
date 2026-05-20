@@ -38,16 +38,16 @@ class BaseSkill(ABC):
         pass
     
     @abstractmethod
-    def handle(self, message: str, context: Dict[str, Any]) -> Optional[str]:
+    def execute(self, message: str, context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
-        处理用户消息
+        执行技能，返回结构化数据
         
         Args:
             message: 用户输入的消息
             context: 上下文信息
             
         Returns:
-            Optional[str]: 回复内容，None 表示不回复
+            Optional[Dict[str, Any]]: 技能返回的数据，None 表示不处理
         """
         pass
     
@@ -63,3 +63,4 @@ class BaseSkill(ABC):
             return current_level >= self.unlock_level
         except Exception:
             return True
+
