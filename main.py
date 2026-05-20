@@ -10,6 +10,7 @@ from src.memory_manager import MemoryManager
 from src.llm_client import LLMClient
 from src.scheduler import Scheduler
 from src.summary_agent import SummaryAgent
+from skills import SKILLS
 
 
 # 加载 .env 文件中的环境变量
@@ -47,6 +48,17 @@ def main():
     # 初始化并启动定时任务调度器
     scheduler = Scheduler(memory_manager, llm_client)
     scheduler.start()
+    
+    # 初始化技能系统
+    active_skills = []
+    print("\n正在加载技能...")
+    for SkillClass in SKILLS:
+        skill = SkillClass(memory_manager, llm_client)
+        if skill.is_available():
+            active_skills.append(skill)
+            print(f"✅ 已加载技能: {skill.name} v{skill.version} - {skill.description}")
+        else:
+            print(f"⏸️  未加载技能: {skill.name} (需要等级 {skill.unlock_level})")
     
     # 检查是否是第一次聊天（检查浓缩历史是否为空）
     zip_history = memory_manager.load_zip_history()
@@ -148,6 +160,31 @@ def main():
                 
                 # 更新最后消息时间
                 scheduler.update_last_message_time()
+                
+                # 先检查是否有技能可以处理
+                skill_handled = False
+                for skill in active_skills:
+                    if skill.can_handle(user_input):
+                        # 技能可以处理
+                        skill_response = skill.handle(user_input, {})
+                        if skill_response:
+                            # 保存用户消息
+                            memory_manager.add_chat_message("user", user_input)
+                            
+                            # 使用技能回复
+                            scheduler.start_typing(skill_response)
+                            typing_time = llm_client.calculate_typing_delay(skill_response)
+                            time.sleep(typing_time)
+                            print(f"\n{personality.get('name', '千语')}: {skill_response}")
+                            scheduler.end_typing()
+                            memory_manager.add_chat_message("assistant", skill_response)
+                            scheduler.update_last_message_time()
+                            skill_handled = True
+                            break
+                
+                if skill_handled:
+                    # 技能已处理，继续下一轮
+                    continue
                 
                 # 保存用户消息（这会自动增加1点经验值）
                 memory_manager.add_chat_message("user", user_input)
