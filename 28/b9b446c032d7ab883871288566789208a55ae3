@@ -1,0 +1,154 @@
+main.py
+  666e242ebaa1cef4 10-11,81-90,100,131-133,138-140,188,220-221 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a0d35ff83c72afeb2214ac5","tool_type":"agent","tool_id":"Write","line_ranges":[{"Range":[10,11]},{"Range":[81,90]},{"Single":100},{"Range":[131,133]},{"Range":[138,140]},{"Single":188},{"Range":[220,221]}]}]}
+requirements.txt
+  666e242ebaa1cef4 6-8 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a0d35ff83c72afeb2214ac5","tool_type":"agent","tool_id":"Write","line_ranges":[{"Range":[6,8]}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "28b9b446c032d7ab883871288566789208a55ae3",
+  "prompts": {
+    "666e242ebaa1cef4": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a030e7f83c72afeb2213bd6",
+        "model": "Doubao-Seed-2.0-Code__dev"
+      },
+      "human_author": "wangyishuo <wangyishuo@bytedance.com>",
+      "messages": [],
+      "total_additions": 247,
+      "total_deletions": 1,
+      "accepted_lines": 247,
+      "overriden_lines": 0
+    }
+  },
+  "attestation_metadata": {
+    "main.py": [
+      {
+        "hash": "666e242ebaa1cef4",
+        "line_ranges": [
+          {
+            "Range": [
+              10,
+              11
+            ]
+          },
+          {
+            "Range": [
+              81,
+              90
+            ]
+          },
+          {
+            "Single": 100
+          },
+          {
+            "Range": [
+              131,
+              133
+            ]
+          },
+          {
+            "Range": [
+              138,
+              140
+            ]
+          },
+          {
+            "Single": 188
+          },
+          {
+            "Range": [
+              220,
+              221
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a0d35ff83c72afeb2214ac5",
+            "tool_type": "agent",
+            "tool_id": "Write",
+            "line_ranges": [
+              {
+                "Range": [
+                  10,
+                  11
+                ]
+              },
+              {
+                "Range": [
+                  81,
+                  90
+                ]
+              },
+              {
+                "Single": 100
+              },
+              {
+                "Range": [
+                  131,
+                  133
+                ]
+              },
+              {
+                "Range": [
+                  138,
+                  140
+                ]
+              },
+              {
+                "Single": 188
+              },
+              {
+                "Range": [
+                  220,
+                  221
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "requirements.txt": [
+      {
+        "hash": "666e242ebaa1cef4",
+        "line_ranges": [
+          {
+            "Range": [
+              6,
+              8
+            ]
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a0d35ff83c72afeb2214ac5",
+            "tool_type": "agent",
+            "tool_id": "Write",
+            "line_ranges": [
+              {
+                "Range": [
+                  6,
+                  8
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "666e242ebaa1cef4": {
+      "tool": "trae",
+      "conversation_id": "6a030e7f83c72afeb2213bd6",
+      "session_id": "6a030e7f83c72afeb2213bd6",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
