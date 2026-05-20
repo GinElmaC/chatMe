@@ -40,8 +40,6 @@ def main():
     if stats.get('uncompressed_dates'):
         print(f"待浓缩日期: {', '.join(stats['uncompressed_dates'])}")
     
-    print(f"\n当前关系状态:【{level_names[level]}】- {exp}EXP")
-    
     # 初始化LLM客户端
     llm_client = LLMClient()
     
@@ -193,10 +191,6 @@ def main():
                 sentiment_score = llm_client.analyze_content_sentiment(user_input)
                 if sentiment_score != 0:
                     memory_manager.add_content_bonus(sentiment_score)
-                    if sentiment_score > 0:
-                        print(f"💕 好感度 +{sentiment_score}")
-                    else:
-                        print(f"💔 好感度 {sentiment_score}")
                 
                 # 获取上下文消息
                 context_messages = memory_manager.get_context_messages()
@@ -222,11 +216,6 @@ def main():
                 
                 # 更新最后消息时间
                 scheduler.update_last_message_time()
-                
-                # 显示当前关系状态
-                level = memory_manager.get_relationship_level()
-                exp = memory_manager.get_experience()
-                print(f"\n💗 当前状态: 【{level_names[level]}】- {exp}EXP")
                 
             except KeyboardInterrupt:
                 print("\n\n收到中断信号，正在准备退出...")
