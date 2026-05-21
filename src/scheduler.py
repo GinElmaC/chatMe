@@ -206,9 +206,7 @@ class Scheduler:
                     time_since_last_message = (now - self.last_message_time).total_seconds()
                     if time_since_last_message >= 3600:
                         self._generate_proactive_message()
-                        self.waiting_for_reply = True
-                        self.last_proactive_message_time = now
-                        self.follow_up_attempts = 0
+                        self.set_waiting_for_reply()
                     
                     # 计算下一次主动对话时间
                     self.next_proactive_time = self._calculate_next_proactive_time()
@@ -237,11 +235,21 @@ class Scheduler:
         else:
             clingy_level = "比较矜持，温柔询问"
         
+        # 随机选择追问类型
+        follow_up_types = [
+            "关心对方在忙什么",
+            "表达想念",
+            "分享一个小事引发话题",
+            "温柔询问"
+        ]
+        selected_type = random.choice(follow_up_types)
+        
         system_prompt = f"""你是{name}，你刚才给用户发了消息，但用户一直没回复。
 现在你要追问一下。
 
 【关系等级】{level_name}
 【粘人程度】{clingy_level}
+【本次追问类型】{selected_type}
 
 要求：
 - 根据关系等级调整语气，等级越高越可以撒娇
@@ -249,6 +257,7 @@ class Scheduler:
 - 不要太烦人，但可以表现出想念
 - 一句话就好，不要太长
 - 用自然的语气
+- 【重要】不要重复之前的追问方式，每次换个说法！
 
 【例子】
 陌生/熟悉: "哈喽~ 还在吗？是不是在忙呀？"
@@ -259,11 +268,19 @@ class Scheduler:
         messages = [{"role": "system", "content": system_prompt}]
         
         try:
-            response = self.llm_client.chat(messages, personality)
-            if response and not response.startswith("抱歉"):
+            # 使用更高的温度增加随机性，利用LLMClient的重试机制
+            response = self.llm_client._call_llm_with_retry(
+                lambda: self.llm_client.client.chat.completions.create(
+                    model=self.llm_client.model,
+                    messages=messages,
+                    temperature=1.0  # 提高温度增加多样性
+                )
+            )
+            response_text = response.choices[0].message.content
+            if response_text and not response_text.startswith("抱歉"):
                 with self.message_lock:
-                    self.pending_message = response
-                print(f"生成追问消息 ({level_name}): {response}")
+                    self.pending_message = response_text
+                print(f"生成追问消息 ({level_name}): {response_text}")
         except Exception as e:
             print(f"生成追问消息失败: {e}")
     
@@ -314,6 +331,16 @@ class Scheduler:
         else:
             intimacy_level = "刚认识不久，保持礼貌和温柔"
         
+        # 随机选择一个开场类型，增加多样性
+        opening_types = [
+            "分享自己正在做的事",
+            "关心问候对方",
+            "提到最近聊过的话题",
+            "分享一个小想法或小发现",
+            "邀请对方做某事"
+        ]
+        selected_type = random.choice(opening_types)
+        
         # 构建更详细的提示词
         system_prompt = f"""你是{name}，现在你主动找用户聊天。
 
@@ -335,6 +362,8 @@ class Scheduler:
 【最近的聊天话题】
 {'、'.join(recent_topics) if recent_topics else '暂时没有特别的记录'}
 
+【本次开场类型】{selected_type}
+
 【聊天要求】
 1. 你现在是主动找用户聊天，不是回复消息
 2. 语气要自然，像真的朋友一样，不要太正式
@@ -346,9 +375,10 @@ class Scheduler:
 8. 不要太刻意，要自然，像朋友之间的日常聊天
 9. 一句话或两句话就好，不要太长
 10. 可以用一些语气词（呀、呢、哦、哈、啦）
-11. 可以用简单的表情（~、😊、✨）
+11. 可以用简单的表情（~、😊、✨、🥤、📚）
 12. 要符合你的性格特点
 13. 根据关系等级调整语气：等级越高，可以越亲密、越随便、越粘人
+14. 【重要】不要重复之前说过的话！每次都要说不一样的内容！
 
 【不要这样说】
 ❌ "在吗？"
@@ -361,16 +391,26 @@ class Scheduler:
 ✅ "对了，你上次说的那个事情怎么样了呀？"
 ✅ "突然想到你，就来打个招呼~ 最近忙不忙？"
 ✅ "晚上好呀，我正在看书呢，你呢？"
+✅ "今天天气真好，你有没有出门走走呀？"
+✅ "我刚刷到一个有趣的视频，想跟你分享一下~"
 """
         
         messages = [{"role": "system", "content": system_prompt}]
         
         try:
-            response = self.llm_client.chat(messages, personality)
-            if response and not response.startswith("抱歉"):
+            # 使用更高的温度增加随机性，利用LLMClient的重试机制
+            response = self.llm_client._call_llm_with_retry(
+                lambda: self.llm_client.client.chat.completions.create(
+                    model=self.llm_client.model,
+                    messages=messages,
+                    temperature=1.2  # 提高温度增加多样性
+                )
+            )
+            response_text = response.choices[0].message.content
+            if response_text and not response_text.startswith("抱歉"):
                 with self.message_lock:
-                    self.pending_message = response
-                print(f"生成主动消息 ({level_name}): {response}")
+                    self.pending_message = response_text
+                print(f"生成主动消息 ({level_name}): {response_text}")
         except Exception as e:
             print(f"生成主动消息失败: {e}")
     
@@ -386,6 +426,12 @@ class Scheduler:
         self.last_message_time = datetime.now()
         # 用户回复了，取消等待回复状态
         self.waiting_for_reply = False
+        self.follow_up_attempts = 0
+    
+    def set_waiting_for_reply(self):
+        """设置等待回复状态（千语发了消息，等用户回）"""
+        self.waiting_for_reply = True
+        self.last_proactive_message_time = datetime.now()
         self.follow_up_attempts = 0
     
     def trigger_summary_now(self):

@@ -26,10 +26,6 @@ class MemoryManager:
         # 确保基础目录存在
         self._ensure_data_dirs()
         
-        # 今日日期和文件
-        self.today = datetime.now().strftime("%Y-%m-%d")
-        self.today_chat_file = os.path.join(self.chat_history_dir, f"chat_history_{self.today}.json")
-        
         # 浓缩历史文件
         self.zip_file = os.path.join(self.base_dir, "chat_history_zip.json")
         
@@ -46,6 +42,16 @@ class MemoryManager:
         self._personality_cache = None
         self._personality_cache_time = None
         self._cache_duration = 30
+    
+    @property
+    def today(self):
+        """动态获取今日日期"""
+        return datetime.now().strftime("%Y-%m-%d")
+    
+    @property
+    def today_chat_file(self):
+        """动态获取今日聊天记录文件路径"""
+        return os.path.join(self.chat_history_dir, f"chat_history_{self.today}.json")
     
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """加载配置文件（保持向后兼容）"""

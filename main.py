@@ -231,8 +231,8 @@ def main():
                 # 保存助手回复
                 memory_manager.add_chat_message("assistant", full_response)
                 
-                # 更新最后消息时间
-                scheduler.update_last_message_time()
+                # 设置等待回复状态，以便触发追问
+                scheduler.set_waiting_for_reply()
                 
             except KeyboardInterrupt:
                 print("\n\n收到中断信号，正在准备退出...")

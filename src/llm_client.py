@@ -20,6 +20,21 @@ class LLMClient:
         
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
     
+    def _call_llm_with_retry(self, func, max_retries=3):
+        """带重试机制的LLM调用"""
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                return func()
+            except Exception as e:
+                retry_count += 1
+                if retry_count < max_retries:
+                    print(f"LLM调用失败（第{retry_count}次重试）: {e}")
+                    time.sleep(2)  # 等待2秒后重试
+                else:
+                    print(f"LLM调用失败（已重试{max_retries}次）: {e}")
+                    raise  # 最后一次失败则抛出异常
+    
     @staticmethod
     def calculate_typing_delay(text: str) -> float:
         """计算打字所需的时间（一个汉字0.5秒"""
@@ -102,10 +117,12 @@ class LLMClient:
             temperature = 0.3
         
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=full_messages,
-                temperature=temperature
+            response = self._call_llm_with_retry(
+                lambda: self.client.chat.completions.create(
+                    model=self.model,
+                    messages=full_messages,
+                    temperature=temperature
+                )
             )
             full_response = response.choices[0].message.content
             return full_response
@@ -137,10 +154,12 @@ class LLMClient:
         full_messages = [{"role": "system", "content": system_prompt}] + messages
         
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=full_messages,
-                temperature=0.8
+            response = self._call_llm_with_retry(
+                lambda: self.client.chat.completions.create(
+                    model=self.model,
+                    messages=full_messages,
+                    temperature=0.8
+                )
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -157,10 +176,12 @@ class LLMClient:
         ]
         
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=0.3
+            response = self._call_llm_with_retry(
+                lambda: self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=0.3
+                )
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -191,10 +212,12 @@ class LLMClient:
         ]
         
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=0.0
+            response = self._call_llm_with_retry(
+                lambda: self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=0.0
+                )
             )
             
             score = int(response.choices[0].message.content.strip())
